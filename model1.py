@@ -1,12 +1,13 @@
 import torch
 import os
-import torch.functional as F
+import torch.nn.functional as F
 import matplotlib.pyplot as plt
 import progressbar
 
 from torch import nn, tensor
 from torch.optim import Adam
-from torch.nn import *
+from torch.nn import Linear, Sigmoid, ReLU, Softmax
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 # The goal is to output x to the power of 2
 # Example: x=5, 5^2=25
@@ -30,10 +31,6 @@ class Model1(nn.Module):
     self.hidden_n4=Linear(3,1)
 
     self.activation=[Sigmoid(), ReLU()]
-    self.optimizer=Adam(self.parameters(), lr=1e-1)
-    self.loss_data=[]
-
-    self.next=10000
 
   def forward(self, x):
     self.y=self.activation[0](self.input_n(x))
@@ -44,34 +41,55 @@ class Model1(nn.Module):
 
     return self.y		
 
-  def loss(self, correct):
-    loss_fn=nn.MSELoss(reduction="sum")
-    return loss_fn(self.y, correct)
+def train(x, model, optimizer):
+  global loss_data
+  model.train()
+  correct=x*x
 
-  def backward(self, output,  correct):
-    self.loss_d=self.loss(correct)
-    self.optimizer.zero_grad()
+  optimizer.zero_grad()
+  output=model(x)
+  loss=F.mse_loss(output, correct)
+  loss.backward()
+  optimizer.step()
+  loss_data.append(loss.data.item())
+  
+  torch.save(model.state_dict(), "model1_model.txt")
     
-    self.loss_d.backward()
-    self.optimizer.step()
+def run(x, model):
+  global test_loss
 
-  def train(self, epoch=200000):
-    for i in progressbar.progressbar(range(epoch), redirect_stdout=True):
+  model.eval()
 
-      self.x=torch.randint(100, (50,1), dtype=torch.float)
-      self.correct=self.x*self.x
-      self.backward(self.forward(self.x), self.correct)
-      self.loss_data.append(self.loss_d.data.item())
-      
-      if i%10000==0:
-        print("Loss: ",self.loss_d.data.item())
-        torch.save(self.state_dict(), "model1_model.txt")
-    
-  def run(self, x):
-    print("Output: ", self.forward(x))
+  test_loss=0
+  
+  for i in range(100):
+    prediction=model(torch.Tensor([i]))
+    test_loss+=F.mse_loss(prediction, torch.Tensor([i*i]))
 
+  test_loss/=100
+
+  print("Average Loss: ", test_loss.item())
+  return test_loss
+
+def test(x, model):
+  model.eval()
+  print("Prediction: ", model(torch.Tensor([x])))
+
+loss_data=[]
 net=Model1()
-net.train()
-net.load_state_dict(torch.load("model1_model.txt"))
-#net.run()
-print(net.state_dict())
+optimizer=Adam(net.parameters(), lr=1)
+scheduler=ReduceLROnPlateau(optimizer, verbose=True)
+
+#net.load_state_dict(torch.load("model1_model.txt"))
+#test(torch.Tensor([5]), net)
+
+for epoch in progressbar.progressbar(range(5000), redirect_stdout=True):
+  x=torch.randint(100, (50,1), dtype=torch.float)
+  train(x, net, optimizer)
+  test_loss=run(x, net)
+  #scheduler.step(test_loss)
+
+#print(net.state_dict())
+
+plt.plot(loss_data)
+plt.show()
