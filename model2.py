@@ -23,13 +23,7 @@ class Network(nn.Module):
 		
 		self.gamma=0.999
 		
-	def forward(self, info, asd=False):
-
-		if asd==True:
-			print(info[0].type())
-			print(info[2].type())
-			print(info[1].type())
-
+	def forward(self, info):
 		y=torch.tanh(self.fc1(info[0]+info[2], info[1]))
 		y=torch.tanh(self.fc2(y))
 		y=torch.tanh(self.fc3(y))
@@ -101,7 +95,7 @@ def train(policy_model, test_model, episodes):
 
 	test_model.eval()
 
-	memory=ReplayMemory(10000)
+	memory=ReplayMemory(200*episodes)
 	optimizer=optim.RMSprop(policy_model.parameters())
 
 	reward_p=[]
@@ -136,37 +130,36 @@ def train(policy_model, test_model, episodes):
 			if direction==Left and current_pos[0]-1>=0:
 				current_pos[0]-=1
 				info[0][current_pos[1]][current_pos[0]]=2
-				info[2].reshape(1,16)[0][state]=5			
+				info[2].reshape(1,16)[0][state]=-5			
 			elif direction==Down and current_pos[1]+1<env.ncol:
 				current_pos[1]+=1
 				info[0][current_pos[1]][current_pos[0]]=2
-				info[2].reshape(1,16)[0][state]=5                          
+				info[2].reshape(1,16)[0][state]=-5                          
 			elif direction==Right and current_pos[0]+1<env.nrow:
 				current_pos[0]+=1
 				info[0][current_pos[1]][current_pos[0]]=2
-				info[2].reshape(1,16)[0][state]=5                          
+				info[2].reshape(1,16)[0][state]=-5                          
 			elif direction==Up and current_pos[1]-1>=0:
 				current_pos[1]-=1
 				info[0][current_pos[1]][current_pos[0]]=2
-				info[2].reshape(1,16)[0][state]=5                          
+				info[2].reshape(1,16)[0][state]=-5                          
 
 			last_state=torch.Tensor([state]).unsqueeze(0)
-			state, rewardx, done,_=env.step(direction)
+			state, rewardx, done, next_state=env.step(direction)
 
 			if rewardx==0:
-				reward-=5
+				reward-=1
 			else:
-				reward*=5000
+				reward+=1
 	
 			info[0]=torch.zeros(4,4)
 			info[0].reshape(1,16)[0][state]=2
-			info[2].reshape(1,16)[0][state]+=5
+			info[2].reshape(1,16)[0][state]-=5
 	
 			state=torch.Tensor([state])
 			reward=torch.Tensor([reward])
 	
 			actions=y.max(1)[1].view(1,1)
-			next_state=(last_state-torch.Tensor([state]).unsqueeze(0))
 			memory.append(state, reward, actions, next_state, info)
 			lossn=optimize_model(policy_model, test_model, memory, optimizer)
 			epoch+=1
@@ -177,13 +170,13 @@ def train(policy_model, test_model, episodes):
 			state=int(state)	
 	
 			if done==True:
-				print(f"Episode {c} finished\nReward: {reward}\nLoss: {lossn}\tEpoch: {epoch}")
+				print(f"Episode {c} finished\nReward: {reward.item()}\nLoss: {lossn}\tEpoch: {epoch}")
 				print(info[2])
 				break
 		if c%10==0:
 			torch.save(policy_model.state_dict(), "model2_model.txt")
 	
-	plt.plot(loss_p)
+	plt.plot(reward_p)
 	plt.show()
 	
 def main():
@@ -196,7 +189,7 @@ def main():
 	except:
 		target_net.load_state_dict(policy_net.state_dict())
 	target_net.eval()
-	train(policy_net, target_net, 1000)
+	train(policy_net, target_net, 5000)
 
 
 if __name__=="__main__":
