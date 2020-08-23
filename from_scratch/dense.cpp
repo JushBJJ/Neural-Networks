@@ -17,9 +17,9 @@ class net
         public:
                 net(int, int);
 
-                void get_weights(void);
-                void get_biases(void);
-                void get_info(void);
+                void get_weights();
+                void get_biases();
+                void get_info();
 
                 double forward(double*, int);
 };
@@ -58,7 +58,7 @@ double net::forward(double *x, int size)
         return y;
 }
 
-void net::get_weights(void)
+void net::get_weights()
 {
         for(int y=0; y<in_features; y++)
         {
@@ -69,7 +69,7 @@ void net::get_weights(void)
         }
 }
 
-void net::get_biases(void)
+void net::get_biases()
 {
         std::cout<<"[";
         for(int y=0; y<out_features; y++)
@@ -78,7 +78,7 @@ void net::get_biases(void)
         std::cout<<"],"<<"\n";
 }
 
-void net::get_info(void)
+void net::get_info()
 {
         std::cout<<"in_features: "<<in_features<<"\n";
         std::cout<<"out_features: "<<out_features<<"\n";
@@ -98,7 +98,7 @@ double *random_input(int size){
         return x;
 }
 
-int main(void){
+int main(){
         int in_features=3;
         int out_features=1;
         
