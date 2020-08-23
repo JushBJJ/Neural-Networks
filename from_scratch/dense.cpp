@@ -99,16 +99,18 @@ double *random_input(int size){
 }
 
 int main(void){
-        int input_size=3;
-        double *input=random_input(input_size);
+        int in_features=3;
+        int out_features=1;
+        
+        double *x=random_input(in_features);
         double out=0;
 
-        net net1(3,1);
+        net net1(in_features, out_features);
         net1.get_info();
 
         std::cout<<"Forward: "<<"\n";
 
-        out=net1.forward(input, input_size);
+        out=net1.forward(x, in_features);
         std::cout<<out<<"\n";
         return 0;
 }
