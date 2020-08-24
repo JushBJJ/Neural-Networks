@@ -16,7 +16,7 @@ public:
     int in_features;
     int out_features;
 
-    dense(int, int);
+    void init(int, int);
 
     void get_weights();
     void get_biases();
@@ -28,90 +28,44 @@ public:
     double *forward(double *);
 };
 
-class model
+void dense::init(int in_f, int out_f)
 {
-private:
-    dense **layers;
-    int n_layers=3;
+    this->in_features = in_f;
+    this->out_features = out_f;
 
-public:
-    model();
-    double *forward(double *);
-};
-
-model::model()
-{
-    layers = new dense*[n_layers]; // 3 Layer Neural Network
-
-    dense l1(1, 5);
-    dense l2(5, 10);
-    dense l3(10, 3);
-
-    layers[0] = &l1;
-    layers[1] = &l2;
-    layers[2] = &l3;
-}
-
-int dense::get_in_features()
-{
-    return in_features;
-}
-
-int dense::get_out_features()
-{
-    return out_features;
-}
-
-double *model::forward(double *x)
-{
-    double *y = layers[0]->forward(x);
-    y = layers[1]->forward(y);
-    y = layers[2]->forward(y);
-
-    for (int i = 0; i < layers[2]->out_features; i++)
-        std::cout << y[i] << "\n";
-
-    return y;
-}
-
-dense::dense(int in_f, int out_f)
-{
-    in_features = in_f;
-    out_features = out_f;
-
-    weights = new double[in_features * out_features];
-    biases = new double[out_features];
+    this->weights = new double[in_f * out_f];
+    this->biases = new double[out_f];
 
     // Weight Initialization
     for (int in = 0; in < in_f; in++)
         for (int out = 0; out < out_f; out++)
-            weights[in * in_features + out] = randn(gen) * 0.1;
+            this->weights[in * in_f + out] = randn(gen) * 0.1;
 
     // Biases Initialization
     for (int out = 0; out < out_f; out++)
-        biases[out] = randn(gen) * 0.1;
+        this->biases[out] = randn(gen) * 0.1;
 }
 
 double *dense::forward(double *x)
 {
     // Equal to numpy.dot()
     // https://www.mathsisfun.com/algebra/matrix-multiplying.html
-    double *y = new double[out_features];
+    double *out = new double[this->out_features];
 
-    for (int i = 0; i < in_features; i++)
-        for (int j = 0; j < out_features; j++)
-            y[j] += (x[i] * weights[i * in_features + j]) + biases[j];
+    for (int j = 0; j < this->out_features; j++)
+        for (int i = 0; i < this->in_features; i++)
+            out[j] += (x[i] * this->weights[j * this->in_features + i])+this->biases[j];
 
-    return y;
+    return out;
 }
 
 void dense::get_weights()
 {
-    for (int y = 0; y < in_features; y++)
+    for (int y = 0; y < this->in_features; y++)
     {
         std::cout << "[";
-        for (int x = 0; x < out_features; x++)
-            std::cout << weights[y * in_features + x] << ",";
+        for (int x = 0; x < this->out_features; x++)
+            std::cout << weights[y * this->in_features + x] << ",";
         std::cout << "],"
                   << "\n";
     }
@@ -120,7 +74,7 @@ void dense::get_weights()
 void dense::get_biases()
 {
     std::cout << "[";
-    for (int y = 0; y < out_features; y++)
+    for (int y = 0; y < this->out_features; y++)
         std::cout << biases[y] << ",";
 
     std::cout << "],"
@@ -129,14 +83,66 @@ void dense::get_biases()
 
 void dense::get_info()
 {
-    std::cout << "in_features: " << in_features << "\n";
-    std::cout << "out_features: " << out_features << "\n";
+    std::cout << "this->in_features: " << this->in_features << "\n";
+    std::cout << "this->out_features: " << this->out_features << "\n";
     std::cout << "Weights: "
               << "\n";
     get_weights();
     std::cout << "Biases: "
               << "\n";
     get_biases();
+}
+
+class model
+{
+private:
+    int n_layers = 3;
+    dense layers[3];
+
+public:
+    model();
+    double *forward(double *);
+};
+
+int dense::get_in_features()
+{
+    return this->in_features;
+}
+
+int dense::get_out_features()
+{
+    return this->out_features;
+}
+
+model::model()
+{
+    dense ly1;
+    dense ly2;
+    dense ly3;
+
+    ly1.init(5, 10);
+    ly2.init(10, 3);
+    ly3.init(3, 2);
+
+    this->layers[0] = ly1;
+    this->layers[1] = ly2;
+    this->layers[2] = ly3;
+}
+
+double *model::forward(double *x)
+{
+    double *y = x;
+
+    // Forward all layers
+    y = this->layers[0].forward(x);
+    y = this->layers[1].forward(y);
+    y = this->layers[2].forward(y);
+
+    // Print all values
+    for (int i = 0; i < this->layers[2].out_features; i++)
+        std::cout << y[i] << "\n";
+
+    return y;
 }
 
 double *random_input(int size)
