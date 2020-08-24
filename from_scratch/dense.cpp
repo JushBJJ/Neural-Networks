@@ -1,8 +1,10 @@
 #include <iostream>
 #include <random>
+#include <chrono>
 
 // Seed and Random
-std::default_random_engine gen;
+unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+std::default_random_engine gen(seed);
 std::uniform_real_distribution<double> randn(0.0, 1.0);
 
 class dense
@@ -54,7 +56,7 @@ double *dense::forward(double *x)
 
     for (int j = 0; j < this->out_features; j++)
         for (int i = 0; i < this->in_features; i++)
-            out[j] += (x[i] * this->weights[j * this->in_features + i])+this->biases[j];
+            out[j] += (x[i] * this->weights[j * this->in_features + i]) + this->biases[j];
 
     return out;
 }
@@ -69,6 +71,7 @@ void dense::get_weights()
         std::cout << "],"
                   << "\n";
     }
+    std::cout<<"\n";
 }
 
 void dense::get_biases()
@@ -78,30 +81,35 @@ void dense::get_biases()
         std::cout << biases[y] << ",";
 
     std::cout << "],"
-              << "\n";
+              << "\n\n";
 }
 
 void dense::get_info()
 {
-    std::cout << "this->in_features: " << this->in_features << "\n";
-    std::cout << "this->out_features: " << this->out_features << "\n";
+    std::cout << "in_features: " << this->in_features << "\n";
+    std::cout << "out_features: " << this->out_features << "\n";
     std::cout << "Weights: "
               << "\n";
+
     get_weights();
+
     std::cout << "Biases: "
               << "\n";
+
     get_biases();
 }
 
 class model
 {
 private:
-    int n_layers = 3;
     dense layers[3];
 
 public:
+    int n_layers = 3;
+
     model();
     double *forward(double *);
+    void show_info();
 };
 
 int dense::get_in_features()
@@ -129,6 +137,17 @@ model::model()
     this->layers[2] = ly3;
 }
 
+void model::show_info()
+{
+    for (int i = 0; i < sizeof(this->layers) / sizeof(this->layers[0]); i++)
+    {
+        std::cout << "Layer " << i << "\n";
+        this->layers[i].get_info();
+
+        std::cout << "\n";
+    }
+}
+
 double *model::forward(double *x)
 {
     double *y = x;
@@ -139,9 +158,13 @@ double *model::forward(double *x)
     y = this->layers[2].forward(y);
 
     // Print all values
-    for (int i = 0; i < this->layers[2].out_features; i++)
-        std::cout << y[i] << "\n";
+    std::cout<<"Output: \n";
 
+    std::cout<<"[";
+    for (int i = 0; i < this->layers[2].out_features; i++)
+        std::cout << y[i]<<",";
+    
+    std::cout<<"],\n";
     return y;
 }
 
@@ -164,6 +187,11 @@ int main()
     double *out = 0;
 
     model test;
+
+    std::cout << "Model Info: "
+              << "\n";
+
+    test.show_info();
     test.forward(x);
     return 0;
 }
