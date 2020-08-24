@@ -5,112 +5,159 @@
 std::default_random_engine gen;
 std::uniform_real_distribution<double> randn(0.0, 1.0);
 
-class net
+class dense
 {
-        private:
-                int in_features;
-                int out_features;
+private:
+    // 2 dimenisional Array
+    double *weights;
+    double *biases;
 
-                // 2 dimenisional Array (10,10)
-                double weights[10][10];
-                double biases[10];
-        public:
-                net(int, int);
+public:
+    int in_features;
+    int out_features;
 
-                void get_weights();
-                void get_biases();
-                void get_info();
+    dense(int, int);
 
-                double forward(double*, int);
+    void get_weights();
+    void get_biases();
+    void get_info();
+
+    int get_in_features();
+    int get_out_features();
+
+    double *forward(double *);
 };
 
-net::net(int in_f, int out_f)
+class model
 {
-        in_features=in_f;
-        out_features=out_f;
+private:
+    dense **layers;
+    int n_layers=3;
 
-        // Weight Initialization
-        for(int in=0; in<in_f; in++)
-        {
-                for(int out=0; out<out_f; out++)
-                        weights[in][out]=randn(gen);
-        }
+public:
+    model();
+    double *forward(double *);
+};
 
-        // Biases Initialization
-        for (int out=0; out<out_f; out++)
-                biases[out]=randn(gen);
-}
-
-double net::forward(double *x, int size)
+model::model()
 {
-        // Equal to numpy.dot()
-        // https://www.mathsisfun.com/algebra/matrix-multiplying.html
-        double y=0;
+    layers = new dense*[n_layers]; // 3 Layer Neural Network
 
-        for(int i=0; i<in_features; i++)
-        {
-                for(int j=0; j<out_features; j++)
-                {
-                        y+=*(x+i)*weights[i][j];
-                }
-        }
+    dense l1(1, 5);
+    dense l2(5, 10);
+    dense l3(10, 3);
 
-        return y;
+    layers[0] = &l1;
+    layers[1] = &l2;
+    layers[2] = &l3;
 }
 
-void net::get_weights()
+int dense::get_in_features()
 {
-        for(int y=0; y<in_features; y++)
-        {
-                std::cout<<"[";
-                for(int x=0; x<out_features; x++)
-                        std::cout<<weights[y][x]<<",";
-                std::cout<<"],"<<"\n";
-        }
+    return in_features;
 }
 
-void net::get_biases()
+int dense::get_out_features()
 {
-        std::cout<<"[";
-        for(int y=0; y<out_features; y++)
-                std::cout<<biases[y]<<",";
-
-        std::cout<<"],"<<"\n";
+    return out_features;
 }
 
-void net::get_info()
+double *model::forward(double *x)
 {
-        std::cout<<"in_features: "<<in_features<<"\n";
-        std::cout<<"out_features: "<<out_features<<"\n";
-        std::cout<<"Weights: "<<"\n";
-        get_weights();
-        std::cout<<"Biases: "<<"\n";
-        get_biases();
+    double *y = layers[0]->forward(x);
+    y = layers[1]->forward(y);
+    y = layers[2]->forward(y);
+
+    for (int i = 0; i < layers[2]->out_features; i++)
+        std::cout << y[i] << "\n";
+
+    return y;
 }
 
-double *random_input(int size){
-        double *x=new double[size];
+dense::dense(int in_f, int out_f)
+{
+    in_features = in_f;
+    out_features = out_f;
 
-        for(int i=0; i<size; i++){
-                x[i]=randn(gen);
-        }
+    weights = new double[in_features * out_features];
+    biases = new double[out_features];
 
-        return x;
+    // Weight Initialization
+    for (int in = 0; in < in_f; in++)
+        for (int out = 0; out < out_f; out++)
+            weights[in * in_features + out] = randn(gen) * 0.1;
+
+    // Biases Initialization
+    for (int out = 0; out < out_f; out++)
+        biases[out] = randn(gen) * 0.1;
 }
 
-int main(){
-        int in_features=3;
-        int out_features=1;
-        
-        double *x=random_input(in_features);
-        double out=0;
+double *dense::forward(double *x)
+{
+    // Equal to numpy.dot()
+    // https://www.mathsisfun.com/algebra/matrix-multiplying.html
+    double *y = new double[out_features];
 
-        net net1(in_features, out_features);
-        net1.get_info();
+    for (int i = 0; i < in_features; i++)
+        for (int j = 0; j < out_features; j++)
+            y[j] += (x[i] * weights[i * in_features + j]) + biases[j];
 
-        std::cout<<"Forward: "<<"\n";
+    return y;
+}
 
-        out=net1.forward(x, in_features);
-        std::cout<<out<<"\n";
-        return 0;
+void dense::get_weights()
+{
+    for (int y = 0; y < in_features; y++)
+    {
+        std::cout << "[";
+        for (int x = 0; x < out_features; x++)
+            std::cout << weights[y * in_features + x] << ",";
+        std::cout << "],"
+                  << "\n";
+    }
+}
+
+void dense::get_biases()
+{
+    std::cout << "[";
+    for (int y = 0; y < out_features; y++)
+        std::cout << biases[y] << ",";
+
+    std::cout << "],"
+              << "\n";
+}
+
+void dense::get_info()
+{
+    std::cout << "in_features: " << in_features << "\n";
+    std::cout << "out_features: " << out_features << "\n";
+    std::cout << "Weights: "
+              << "\n";
+    get_weights();
+    std::cout << "Biases: "
+              << "\n";
+    get_biases();
+}
+
+double *random_input(int size)
+{
+    double *x = new double[size];
+
+    for (int i = 0; i < size; i++)
+        x[i] = randn(gen);
+
+    return x;
+}
+
+int main()
+{
+    int in_features = 3;
+    int out_features = 5;
+
+    double *x = random_input(in_features);
+    double *out = 0;
+
+    model test;
+    test.forward(x);
+    return 0;
 }
