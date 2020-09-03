@@ -1,4 +1,4 @@
-// Neural Network that distinguishes between Hello or something else
+#Neural Network that distinguishes between Hello or something else
 
 import torch
 import torch.nn as nn
@@ -73,7 +73,7 @@ def generate_random_data(size, x, y):
     return x, y
 
 def new_text(text):
-    text=text_to_tensor(text)
+    text=text_to_tensor(text.lower())
     text.cuda()
 
     return text
@@ -109,8 +109,8 @@ loss_fn=nn.MSELoss()
 scheduler=optim.lr_scheduler.ReduceLROnPlateau(opt, verbose=True)
 
 total_loss=0
-epochs=5000
-batch_size=8
+epochs=50000
+batch_size=128
 
 epoch=0
 
