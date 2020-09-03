@@ -1,4 +1,4 @@
-#Neural Network that distinguishes between Hello or something else
+#Neural Network that distinguishes between Hello and Bye within a text
 
 import torch
 import torch.nn as nn
@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 class model(nn.Module):
     def __init__(self):
         super(model, self).__init__()
-        self.responses=["Hello", "Bye"]
+        self.responses=["Hello", "I don't know", "Bye"]
 
         self.fc1=nn.Linear(30, 50)
         self.fc2=nn.Linear(50, 30)
@@ -59,11 +59,13 @@ def generate_random_data(size, x, y):
                 already_added=True
 
         if "hello" in new_data:
-            y=torch.cat((y, torch.tensor([[1, 0]])), dim=0)
+            y=torch.cat((y, torch.tensor([[1, 0, 0]])), dim=0)
             hello_count+=1
+        elif "bye" in new_data:
+            y=torch.cat((y, torch.tensor([[0, 0, 1]])), dim=0)
+            bye_count+=1
         else:
-            y=torch.cat((y, torch.tensor([[0, 1]])), dim=0)
-            bye_count+=1        
+            y=torch.cat((y, torch.tensor([[0, 1, 0]])), dim=0)
 
         x.append(new_data)
         
@@ -137,7 +139,7 @@ for z in range(epochs):
         losses.append(loss.item())
         epoch+=1
 
-    if epoch%1000==0:
+    if epoch%10000==0:
         print(f"Epoch: {epoch}\tTotal Loss: {total_loss}")
 
     total_loss=0
@@ -146,6 +148,6 @@ for z in range(epochs):
 plt.plot(losses)
 plt.show()
 
-responses=["Hello", "Bye"]
+responses=["Hello", "I don't know", "Bye"]
 out=test(text)
 print(out)
