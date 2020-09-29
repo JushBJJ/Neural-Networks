@@ -1,5 +1,5 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 # Tictactoe
 class Game:
@@ -7,7 +7,7 @@ class Game:
         self.actions=9
         self.game=np.chararray((3,3))
         self.game[:]="#"
-        
+
         self.rows=self.game.shape[0]
         self.cols=self.game.shape[1]
 
@@ -24,7 +24,7 @@ class Game:
             if np.all(self.game[j]==self.symbols[self.turn]):
                 win=self.turn
                 break
-        
+
         # Check Vertical
         for i in range(self.game.shape[1]):
             temp=0
@@ -33,13 +33,13 @@ class Game:
                 if np.all(self.game[j][i]==self.symbols[self.turn]):
                     temp+=1
 
-            if temp==3: 
+            if temp==3:
                 win=self.turn
                 break
 
         # Check Diagonal (Left to Right)
         sym=self.symbols[self.turn]
-        
+
         a=self.game[0][0]==sym
         b=self.game[1][1]==sym
         c=self.game[2][2]==sym
@@ -70,18 +70,24 @@ class Game:
         return win
 
     def doAction(self, action):
-        print(action)
+        repeated=False
 
         if action<3 and self.game[0][action]==b"#":
             self.game[0][action]=self.symbols[self.turn]
-        
+
         elif action>=3 and action<6:
-            if self.game[0][action-3]==b"#":
+            if self.game[1][action-3]==b"#":
                 self.game[1][action-3]=self.symbols[self.turn]
-        
+            else:
+                repeated=True
+
         elif action>=6:
-            if self.game[0][action-6]==b"#":
+            if self.game[2][action-6]==b"#":
                 self.game[2][action-6]=self.symbols[self.turn]
+            else:
+                repeated=True
+        else:
+            repeat=True
 
         result=self.checkWin()
 
@@ -97,29 +103,31 @@ class Game:
         elif result==self.turn:
             reward=1
             done=True
-        
+
         elif result==0.1:
             reward=0.8
             done=False
 
-        if self.turn==0:
-            self.turn=1
-        else:
-            self.turn=0
+        if repeated==False:
+            if self.turn==0:
+                self.turn=1
+            else:
+                self.turn=0
 
 
         state=self.game.reshape(self.nd_size)
-        return reward, state, done
+        return reward, state, done, repeated
 
     def reset(self):
         self.game[:]=b"#"
         state=self.game.reshape(self.nd_size)
+        self.turn=0
         return state
 
     def render(self):
         for j in range(self.rows):
             for i in range(self.cols):
-                print(self.game[j][j]," ", end="")
+                print(self.game[j][i]," ", end="")
 
             print()
 
@@ -131,15 +139,9 @@ class model:
         self.alpha=0.01
         self.discount_factor=0.8
         self.actions=actions
-    
+
     def step(self, old_state, new_state, action, reward):
-        print("Old State: ", old_state)
-        print("New State: ", new_state)
-        print("Action: ", action)
-        print("Q: ", self.Q)
-
         oldQ=self.Q[old_state][action]
-
         self.Q[old_state][action]=oldQ+self.alpha*(reward+self.discount_factor*self.Q[new_state, ].max()-oldQ)
 
         return self.Q[old_state][action]
@@ -169,7 +171,7 @@ cost=0
 
 states=[]
 
-episodes=10
+episodes=10000
 done=False
 
 for i in range(episodes):
@@ -177,17 +179,17 @@ for i in range(episodes):
         if str(state) not in Q.states:
             Q=addState(Q, state)
             states.append(len(states)+1)
-            
+
         action=Q.getAction(Q.states.index(str(state))-1)
-        reward, newState, done=env.doAction(action)
-     
-        print("Done: ", done)
-        print("reward: ", reward)
+        reward, newState, done, repeated=env.doAction(action)
+
+        if repeated:
+            continue
 
         if str(state) not in Q.states:
             Q=addState(Q, state)
             states.append(len(states)+1)
-        
+
         stateA=Q.states.index(str(state))
         stateB=Q.states.index(str(newState))
 
@@ -196,8 +198,11 @@ for i in range(episodes):
 
         state=newState
         env.render()
-    
+        print("Cost: ", cost, "\tEpisode: ", i,"\tStep: ", steps, "Reward: ", reward)
+
     costs.append(cost)
+    cost=0
+    done=False
     state=env.reset()
 
 f, axs=plt.subplots(1,2)
