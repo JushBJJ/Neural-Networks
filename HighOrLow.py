@@ -49,6 +49,22 @@ def run():
 
     print("Output: ", h(x, t), f"({outb})")
 
+def newRun():
+    t=np.array([[-0.00075969]])
+    x=int(input("Selected Number: "))
+    x=(x-600)/100
+    x=np.array([[x]])
+    
+    out=h(x, t)
+
+    if out>0.00417827:
+        outb="High"
+    elif out<0.00417827:
+        outb="Low"
+
+    print("Output: ", h(x, t), f"({outb})")
+
+
 def test():
     n=0.75134246
     t=np.array([[n]])
@@ -71,27 +87,38 @@ def test():
     return predictions, y, costs
 
 def new_test():
-    n=0.61356113
-    t=np.array([[n]])
-    batches=50
-
     # Selected Number
-    x=np.tanh(np.array([np.arange(0, 100, step=1)]))
+    x=np.array([np.arange(0, 100, step=1)])
     x=x.reshape((100,1))
 
-    # Actual selected number
-    y=np.random.randint(2, size=(1, 100))
+    # Normalizing
+    avg=0
+    for j in range(x.shape[0]):
+        avg+=x[j][0]
+    
+    avg/=60000
+    x=np.subtract(x, avg)
+    x=np.true_divide(x, 100)
 
+    # Actual selected number
+    y=np.random.randint(2, size=(100, 1))
+
+    # Weight
+    t=np.dot(np.dot(np.linalg.inv(np.dot(x.transpose(), x)),x.transpose()), y)
+    #t=np.array([[0.00133863]])
     predictions=h(x, t)
 
     costs=np.array([])
+    totalCost=0
+
     for i in range(x.shape[0]):
-        costs=np.append(costs, (MSE_individual(x[i][0], y[0][i])))
-
+        costs=np.append(costs, (MSE_individual(x[i][0], y[i][0])))
+        totalCost+=costs[i]
+        
     costs=costs.reshape(costs.shape[0], 1)
-    return predictions, y, costs
+    return predictions, y.transpose(), costs
 
-train=False
+train=True
 
 if train:
     episodes=1
@@ -111,18 +138,29 @@ if train:
     weight_data=[]
     predictions=np.array([])
 
-    while episodes<10:
-        batches=600
-        alpha=-0.001
+    for i in range(10**100):
+        batches=600000
+        alpha=1e-6
 
         # Selected Number
-        x=np.tanh(np.random.randint(100, size=(batches, 1)))
+        x=np.random.randint(100, size=(batches, 1), dtype=np.int)
+
+        # Normalizing
+        avg=0
+        for j in range(x.shape[0]):
+            avg+=x[j][0]
+
+        avg/=batches
+        x=np.subtract(x, avg)
+        x=np.true_divide(x, 100)
 
         # Actual selected number
         y=np.random.randint(2, size=(batches, 1))
 
         # Running
-        for i in range(2000):
+        optimized_weight=np.dot(np.dot(np.linalg.inv(np.dot(x.transpose(), x)),x.transpose()), y)
+
+        for i in range(1):
             prediction=h(x, t)
             cost=MSE(prediction, y)
             costs.append(cost)
@@ -130,10 +168,10 @@ if train:
             if lowestCost>cost:
                 lowestCost=cost
                 lowest_cost_data[episodes]={"Weights": t, "Lowest Cost":cost}
-            else:
-                print("Stopped improving...")
-                lowestCost=999
-                break
+            #else:
+              #  print("Stopped improving...")
+               # lowestCost=999
+                #break
 
             if bestLowestCost>lowestCost:
                 bestLowestCost=lowestCost
@@ -141,7 +179,7 @@ if train:
 
             averageCosts.append(getAverageCost(costs))
 
-            print("Episode: ", episodes, "    Epoch: ",i, "    Cost: ", cost)
+            print("Episode: ", episodes, "    Epoch: ",i, "    Cost: ", cost,"    Optimal Weight: ", optimized_weight)
 
             temp=np.zeros(t.shape)
 
@@ -218,6 +256,7 @@ if train:
     
     l1.set_label("Predictions")
     l2.set_label("Cost")
+
     axs[1,1].legend()
     axs[1,1].set_title("New Model")
 
@@ -238,5 +277,4 @@ if train:
 
     plt.show()
 else:
-    #test()
-    run()
+    newRun()

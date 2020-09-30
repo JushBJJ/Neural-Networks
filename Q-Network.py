@@ -169,7 +169,7 @@ cost=0
 
 states=[]
 
-episodes=10
+episodes=1000
 done=False
 
 for i in range(episodes):
