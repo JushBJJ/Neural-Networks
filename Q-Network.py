@@ -72,8 +72,6 @@ class Game:
     def doAction(self, action):
         repeated=False
 
-        print(action)
-
         if action<3 and self.game[0][action]==b"#":
             self.game[0][action]=self.symbols[self.turn]
 
@@ -105,7 +103,6 @@ class Game:
         elif result==self.turn:
             reward=2
             done=True
-            print("Finished")
 
         elif result==0.1:
             reward=1
@@ -226,8 +223,9 @@ for i in range(1, episodes):
         steps+=1
 
         state=newState
-        env.render()
-        print("Cost: ", cost, "\tEpisode: ", i," Step: ", steps, " Reward: ", reward,"gamma: ", Q.discount_factor)
+        #env.render()
+        if i%1000==0:
+            print("Cost: ", cost, "\tEpisode: ", i," Step: ", steps, " Reward: ", reward,"gamma: ", Q.discount_factor)
 
     rewards.append(xrewards)
     costs.append(cost)
