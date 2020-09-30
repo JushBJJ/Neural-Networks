@@ -72,6 +72,8 @@ class Game:
     def doAction(self, action):
         repeated=False
 
+        print(action)
+
         if action<3 and self.game[0][action]==b"#":
             self.game[0][action]=self.symbols[self.turn]
 
@@ -87,7 +89,7 @@ class Game:
             else:
                 repeated=True
         else:
-            repeat=True
+            repeated=True
 
         result=self.checkWin()
 
@@ -101,19 +103,23 @@ class Game:
             done=True
 
         elif result==self.turn:
-            reward=1
+            reward=2
             done=True
+            print("Finished")
 
         elif result==0.1:
-            reward=0.8
+            reward=1
             done=False
+        else:
+            reward=-2
+            done=True
 
         if repeated==False:
             if self.turn==0:
                 self.turn=1
             else:
                 self.turn=0
-
+            done=False
 
         state=self.game.reshape(self.nd_size)
         return reward, state, done, repeated
@@ -136,8 +142,8 @@ class model:
         self.Q=np.zeros((1,actions))
         self.states=[0]
 
-        self.alpha=0.01
-        self.discount_factor=0.8
+        self.alpha=0.001
+        self.discount_factor=0.2
         self.actions=actions
 
     def step(self, old_state, new_state, action, reward):
@@ -164,65 +170,118 @@ Q=model(env.actions)
 state=env.reset()
 env.render()
 
-steps=0
+steps=1
 
 costs=[]
 cost=0
 
 states=[]
+n_states=0
 
-<<<<<<< HEAD
-episodes=1000
-=======
+rewards=[]
+xrewards=0
+
+avgRewards=[]
+totalReward=0
+avgReward=0
+
+avgCosts=[]
+totalCost=0
+avgCost=0
+
+gammas=[]
+
 episodes=10000
->>>>>>> 53df4baa18f0a51f1797aed1ce774f04e19a2be4
 done=False
 
-for i in range(episodes):
-    while not done:
+for i in range(1, episodes):
+    xrewards=0
+
+    if i%1000==0 and Q.discount_factor<0.8:
+        Q.discount_factor+=0.1
+
+    while done==False:
         if str(state) not in Q.states:
             Q=addState(Q, state)
-            states.append(len(states)+1)
+            n_states+=1
 
         action=Q.getAction(Q.states.index(str(state))-1)
         reward, newState, done, repeated=env.doAction(action)
 
-        if repeated:
-            continue
+        if repeated==True:
+            reward=-5
+
+        totalReward+=reward
 
         if str(state) not in Q.states:
             Q=addState(Q, state)
-            states.append(len(states)+1)
+            n_states+=1            
 
         stateA=Q.states.index(str(state))
         stateB=Q.states.index(str(newState))
 
         cost+=Q.step(stateA, stateB, action, reward)
+        totalCost+=cost
+        
         steps+=1
 
         state=newState
         env.render()
-        print("Cost: ", cost, "\tEpisode: ", i,"\tStep: ", steps, "Reward: ", reward)
+        print("Cost: ", cost, "\tEpisode: ", i," Step: ", steps, " Reward: ", reward,"gamma: ", Q.discount_factor)
 
+    rewards.append(xrewards)
     costs.append(cost)
+
+    avgReward=totalReward/i
+    avgRewards.append(avgReward)
+
+    avgCost=totalCost/i
+    avgCosts.append(avgCost)
+
+    states.append(n_states)
+    gammas.append(Q.discount_factor)
+
+
     cost=0
     done=False
     state=env.reset()
 
-f, axs=plt.subplots(1,2)
+f, axs=plt.subplots(2,2)
 
-l,=axs[0].plot(costs)
-axs[0].set_xlabel("Episodes")
-axs[0].set_ylabel("Cost Value")
+l,=axs[0,0].plot(costs)
+l1,=axs[0,0].plot(avgCosts)
+
+axs[0,0].set_xlabel("Episodes")
+axs[0,0].set_ylabel("Cost Value")
 
 l.set_label("Cost")
-axs[0].legend()
+l1.set_label("Average Costs")
 
-l,=axs[1].plot(states)
-axs[1].set_xlabel("Steps")
-axs[1].set_ylabel("States Discovered")
+axs[0,0].legend()
+
+l,=axs[0,1].plot(states)
+axs[0,1].set_xlabel("Steps")
+axs[0,1].set_ylabel("States Discovered")
 
 l.set_label("States")
-axs[1].legend()
+axs[0,1].legend()
+
+l,=axs[1,0].plot(rewards)
+l1,=axs[1,0].plot(avgRewards)
+
+axs[1,0].set_xlabel("Episodes")
+axs[1,0].set_ylabel("rewards")
+
+l.set_label("Rewards")
+l1.set_label("avgRewards")
+
+axs[1,0].legend()
+
+l,=axs[1,1].plot(gammas)
+
+axs[1,1].set_xlabel("Episodes")
+axs[1,1].set_ylabel("Gamma Value")
+l.set_label("Gamma")
+axs[1,1].legend()
 
 plt.show()
