@@ -272,10 +272,16 @@ for i in range(1, episodes):
 
         steps+=1
         state=newState
+<<<<<<< HEAD
 
         if i%1000==0:
             print("Cost: ", cost, "\tEpisode: ", i," Step: ", steps, " Reward: ", reward,"gamma: ", Q.discount_factor)
             env.render()
+=======
+        #env.render()
+        if i%1000==0:
+            print("Cost: ", cost, "\tEpisode: ", i," Step: ", steps, " Reward: ", reward,"gamma: ", Q.discount_factor)
+>>>>>>> 1fdee49d516bf0f753badefc9ce7c05dc2c1d0c0
 
     rewards.append(xrewards)
     costs.append(cost)
