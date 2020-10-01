@@ -72,8 +72,6 @@ class Game:
     def doAction(self, action):
         repeated=False
 
-        print(action)
-
         if action<3 and self.game[0][action]==b"#":
             self.game[0][action]=self.symbols[self.turn]
 
@@ -103,15 +101,14 @@ class Game:
             done=True
 
         elif result==self.turn:
-            reward=2
+            reward=1
             done=True
-            print("Finished")
 
         elif result==0.1:
-            reward=1
+            reward=-0.1
             done=False
         else:
-            reward=-2
+            reward=-1
             done=True
 
         if repeated==False:
@@ -119,7 +116,6 @@ class Game:
                 self.turn=1
             else:
                 self.turn=0
-            done=False
 
         state=self.game.reshape(self.nd_size)
         return reward, state, done, repeated
@@ -140,33 +136,50 @@ class Game:
 class model:
     def __init__(self, actions):
         self.Q=np.zeros((1,actions))
-        self.states=[0]
+
+        self.lastActon=0
+        self.states=[]
 
         self.alpha=0.001
-        self.discount_factor=0.2
+        self.discount_factor=0.9
+        self.epsilon=0.1
         self.actions=actions
 
     def step(self, old_state, new_state, action, reward):
         oldQ=self.Q[old_state][action]
-        self.Q[old_state][action]=oldQ+self.alpha*(reward+self.discount_factor*self.Q[new_state, ].max()-oldQ)
+        self.Q[old_state][action]=oldQ+self.alpha*(reward+self.discount_factor*self.Q[new_state, ].argmax()-oldQ)
 
         return self.Q[old_state][action]
 
-    def getAction(self, state):
-        if np.random.uniform()<self.discount_factor:
-            action=self.Q[state,:].argmax()
+    def policy(self, state):
+        A=np.ones(self.actions, dtype=float)*self.epsilon/self.actions
+        best_action=np.argmax(self.Q[state])
+        A[best_action]+=(1.0-self.epsilon)
+        return A
+
+def addState(Q, Q2, state):
+    n=0
+
+    if str(state) not in Q.states:
+        Q.states.append(str(state))
+        if Q.Q[0].all()==0:
+            Q.Q[0]=np.ones(Q.actions)
         else:
-            action=np.random.choice(self.actions)
+            Q.Q=np.vstack((Q.Q, np.ones(Q.actions)))
+        n=1
 
-        return action
+    if str(state) not in Q2.states:
+        Q2.states.append(str(state))
+        if Q2.Q[0].all()==0:
+            Q2.Q[0]=np.ones(Q2.actions)
+        else:
+            Q2.Q=np.vstack((Q2.Q, np.ones(Q2.actions)))
 
-def addState(Q, state):
-    Q.states.append(str(state))
-    Q.Q=np.vstack((Q.Q, np.zeros(Q.actions)))
-    return Q
+    return Q, Q2, n
 
 env=Game()
 Q=model(env.actions)
+Q2=model(env.actions)
 state=env.reset()
 env.render()
 
@@ -191,43 +204,78 @@ avgCost=0
 
 gammas=[]
 
-episodes=10000
+episodes=100000
 done=False
 
 for i in range(1, episodes):
     xrewards=0
 
-    if i%1000==0 and Q.discount_factor<0.8:
+    if i%15000==0 and Q.discount_factor<0.8:
         Q.discount_factor+=0.1
+        Q2.discount_factor+=0.1
 
     while done==False:
-        if str(state) not in Q.states:
-            Q=addState(Q, state)
-            n_states+=1
+        Q, Q2, n=addState(Q, Q2, state)
+        n_states+=n
 
-        action=Q.getAction(Q.states.index(str(state))-1)
-        reward, newState, done, repeated=env.doAction(action)
+        probs=Q.policy(Q2.states.index(str(state)))
+        Q.lastAction=np.random.choice(np.arange(len(probs)), p=probs)
 
-        if repeated==True:
-            reward=-5
+        reward, newState, done, repeated=env.doAction(Q.lastAction)
 
-        totalReward+=reward
-
-        if str(state) not in Q.states:
-            Q=addState(Q, state)
-            n_states+=1            
+        Q, Q2, n=addState(Q, Q2, newState)
+        n_states+=n
 
         stateA=Q.states.index(str(state))
         stateB=Q.states.index(str(newState))
 
-        cost+=Q.step(stateA, stateB, action, reward)
-        totalCost+=cost
-        
-        steps+=1
+        if repeated==True:
+            reward=-1
+            cost+=Q.step(stateA, stateB, Q.lastAction, reward)
+            totalCost+=cost
+            totalReward+=reward
+            continue
 
+        cost+=Q.step(stateA, stateB, Q.lastAction, reward)
+        totalCost+=cost
+        totalReward+=reward
+
+        if done:
+            stateA=Q2.states.index(str(state))
+            stateB=Q2.states.index(str(newState))
+            Q2.step(stateA, stateB, Q2.lastAction, -1)
+
+        else:
+            while True:
+                prob=Q2.policy(Q2.states.index(str(state)))
+
+                Q2.lastAction=np.random.choice(np.arange(len(prob)), p=prob)
+                reward2, newState, done, repeated=env.doAction(Q2.lastAction)
+
+                Q, Q2, n=addState(Q, Q2, state)
+
+                stateA=Q2.states.index(str(state))
+                stateB=Q2.states.index(str(newState))
+
+                if repeated==True:
+                    cost+=Q2.step(stateA, stateB, Q2.lastAction, -1)
+                    continue
+
+                Q2.step(stateA, stateB, Q2.lastAction, reward2)
+
+                if done:
+                    stateA=Q.states.index(str(state))
+                    stateB=Q.states.index(str(newState))
+                    Q.step(stateA, stateB, Q.lastAction, -1)
+                
+                break
+
+        steps+=1
         state=newState
-        env.render()
-        print("Cost: ", cost, "\tEpisode: ", i," Step: ", steps, " Reward: ", reward,"gamma: ", Q.discount_factor)
+
+        if i%1000==0:
+            print("Cost: ", cost, "\tEpisode: ", i," Step: ", steps, " Reward: ", reward,"gamma: ", Q.discount_factor)
+            env.render()
 
     rewards.append(xrewards)
     costs.append(cost)
